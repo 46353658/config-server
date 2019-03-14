@@ -1,0 +1,138 @@
+Config client
+	
+	- Spring Boot App
+	- Whenever you refresh the client app it will fetch new properties
+		- No need to redeploy  
+			- There are exceptions like database connection properties, but this example intends on conveying the general idea
+
+Config server
+
+	- Spring Cloud Config App
+
+Step 1: 
+
+start.spring.io
+Create config server first
+
+	Group:
+		com.example.config
+	Artifact:
+		config-server
+	Dependencies:
+		Config Server
+
+Step 2:
+
+Create config client
+
+	Group:
+		com.example.config
+	Artifact:
+		config-client
+	Dependencies:
+		Web
+		Config Client
+		Actuator 
+
+Step 3:
+
+Open config server in IDE
+
+	If you pick up mvn proxy issues:
+		C:\Users\F3501809\.m2\settings.xml (update domain password)
+
+Within ConfigServerApplication.java
+add @EnableConfigServer annotation
+
+Within resources -> application.properties you can
+select the port 
+e.g. server.port=8980
+
+Create bootstrap.properties along side application.properties
+this will contain the configuration details
+e.g. spring.cloud.config.server.git.uri=C:\\Users\\F3501809\\Documents\\property_file\\test_application2
+
+Step 4:
+
+Open config client in IDE
+
+Create REST endpoint within main/java/{packagename}/
+
+	MessageResource.java
+
+	@RefreshScope
+	@RequestMapping("/rest")
+	@RestController
+	public class MessageResource {
+	
+	    @Value("${message: Default Hello}")
+	    private String message;
+	
+	    @GetMapping("/message")
+	    public String message() {
+	        // message will come from git repository
+	        return message;
+	    }
+	}
+
+Add bootstrap.properties
+
+	spring.application.name=test_application2
+	spring.cloud.config.uri=http://localhost:8980
+	management.security.enabled=false
+
+Within the git repository create a property file with the application name, 
+in this example:
+	test_application2.properties
+
+Update application.properties in config client:
+	server.port=8900
+
+Step 5:
+
+	Run server
+	Run client
+
+Step 6:
+
+	At this point changes to git repo will not be picked up by refreshing the page
+
+	(Not working on my machine though)
+	using Postman POST http://localhost:8900/refresh
+	or                 http://localhost:8900/actuator/refresh
+
+	Alternatively
+
+	curl -X POST http://localhost:8900/refresh
+	curl -X POST http://localhost:8900/actuator/refresh
+
+	In any event you could restart the client app to test changes
+
+Step 7:
+
+	experiment with different applications and branches
+
+		comment out spring.application.name in config-client bootstrap.properties
+
+		#spring.application.name=test_application2
+
+		& it'll pick up the default from application.properties
+
+	different environment
+
+		add application-int.properties to git repo
+
+		add 
+			spring.profiles.active=int
+		to 
+			bootstrap.properties 
+
+	comma delimited environments will pick up the last first
+
+			add application-qa.properties to git repo
+
+			spring.profiles.active=int, qa
+
+	test different branch by updating bootstrap.properties
+
+			spring.cloud.config.label=feature/feature1
